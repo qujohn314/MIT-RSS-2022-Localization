@@ -28,10 +28,10 @@ class ParticleFilter:
         scan_topic = rospy.get_param("~scan_topic", "/scan")
         odom_topic = rospy.get_param("~odom_topic", "/odom")
         self.laser_sub = rospy.Subscriber(scan_topic, LaserScan,
-                                          YOUR_LIDAR_CALLBACK, # TODO: Fill this in
+                                          lidar_callback, # TODO: Fill this in
                                           queue_size=1)
         self.odom_sub  = rospy.Subscriber(odom_topic, Odometry,
-                                          YOUR_ODOM_CALLBACK, # TODO: Fill this in
+                                          odom_callback, # TODO: Fill this in
                                           queue_size=1)
 
         #  *Important Note #2:* You must respond to pose
@@ -40,7 +40,7 @@ class ParticleFilter:
         #     "Pose Estimate" feature in RViz, which publishes to
         #     /initialpose.
         self.pose_sub  = rospy.Subscriber("/initialpose", PoseWithCovarianceStamped,
-                                          YOUR_POSE_INITIALIZATION_CALLBACK, # TODO: Fill this in
+                                          initialize_particles, # TODO: Fill this in
                                           queue_size=1)
 
         #  *Important Note #3:* You must publish your pose estimate to
@@ -57,13 +57,30 @@ class ParticleFilter:
 
         # Implement the MCL algorithm
         # using the sensor model and the motion model
-        #
+        
         # Make sure you include some way to initialize
         # your particles, ideally with some sort
         # of interactive interface in rviz
         #
         # Publish a transformation frame between the map
         # and the particle_filter_frame.
+    
+    def initialize_particles(msg):
+        # get clicked point from rostopic /initialpose
+        # generate spread of particles around clicked point
+        raise NotImplementedError
+    
+    def lidar_callback(msg):
+        pass
+    
+    def odom_callback(msg): 
+        pass 
+    
+    def MCL(): 
+        raise NotImplementedError
+    
+    def publish_transform():
+        raise NotImplementedError
 
 
 if __name__ == "__main__":
