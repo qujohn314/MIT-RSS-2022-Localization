@@ -33,7 +33,7 @@ class ParticleFilter:
         self.laser_sub = rospy.Subscriber(scan_topic, LaserScan,
                                           lidar_callback,
                                           queue_size=1)
-        self.odom_sub  = rospy.Subscriber(odom_topic, Odometry,
+        self.odom_sub = rospy.Subscriber(odom_topic, Odometry,
                                           odom_callback,
                                           queue_size=1)
 
@@ -42,7 +42,7 @@ class ParticleFilter:
         #     topic. You can test that this works properly using the
         #     "Pose Estimate" feature in RViz, which publishes to
         #     /initialpose.
-        self.pose_sub  = rospy.Subscriber("/initialpose", PoseWithCovarianceStamped,
+        self.pose_sub = rospy.Subscriber("/initialpose", PoseWithCovarianceStamped,
                                           initialize_particles, # TODO: Fill this in
                                           queue_size=1)
 
@@ -52,9 +52,9 @@ class ParticleFilter:
         #     provide the twist part of the Odometry message. The
         #     odometry you publish here should be with respect to the
         #     "/map" frame.
-        self.odom_pub  = rospy.Publisher("/pf/pose/odom", Odometry, queue_size = 1)
+        self.odom_pub = rospy.Publisher("/pf/pose/odom", Odometry, queue_size = 1)
 
-        self.particle_pub  = rospy.Publisher("/pf/pose/particles", PoseArray, queue_size = 1)
+        self.particle_pub = rospy.Publisher("/pf/pose/particles", PoseArray, queue_size = 1)
         
         # Initialize the models
         self.motion_model = MotionModel()
@@ -71,6 +71,8 @@ class ParticleFilter:
         # and the particle_filter_frame.
     
     def initialize_particles(self, pose):
+        #TODO: Does this work?
+        
         # get clicked point from rostopic /initialpose
         # generate spread of particles around clicked point
 
@@ -80,27 +82,33 @@ class ParticleFilter:
         self.particles[:,2] = np.as_euler_angles(pose.orientation) + np.random.normal(loc=0.0,scale=0.4,size=self.MAX_PARTICLES)
 
     def particle_to_pose(particle):
+        #TODO: Does this work?
         pose = Pose()
         pose.position.x = particle[0]
         pose.position.y = particle[1]
         pose.orientation = np.from_euler_angles(particle[2])
         return pose
 
-    def publish_particles(): 
+    def publish_particles(self):
+        #TODO: Does this work?
         p = PoseArray()
         p.poses = map(self.particles, particle_to_pose)
         self.particle_pub.publish(p)
 
     def lidar_callback(msg):
+        #TODO: Fill this out
         pass
-    
-    def odom_callback(msg): 
+
+    def odom_callback(msg):
+        #TODO: Fill this out
         pass 
-    
-    def MCL(): 
+
+    def MCL(self):
+        #TODO: Fill this out
         raise NotImplementedError
     
-    def publish_transform():
+    def publish_transform(self):
+        #TODO: Fill this out
         raise NotImplementedError
 
 
