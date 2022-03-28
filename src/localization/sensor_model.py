@@ -95,7 +95,7 @@ class SensorModel:
         """
         print("Computing Sensor Model Table")
         z_max = self.table_width - 1
-        vals = np.zeros(self.table_width,self.table_width)
+        vals = np.zeros((self.table_width,self.table_width))
         for z in range(self.table_width):
             p = np.zeros(4)
             total_hit = 0
