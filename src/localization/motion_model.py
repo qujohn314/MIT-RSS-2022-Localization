@@ -43,11 +43,10 @@ class MotionModel:
         cosines = np.cos(particles[:, 2])
         sines = np.sin(particles[:, 2])
 
-        #rotation_map = [[cosines, sines, 0], [-sines, cosines, 0], [0, 0, 1]]
-        #self.deltas = np.dot(odometry, rotation_map)
-
-        rotation_map = [[cosines, -sines, 0], [sines, cosines, 0], [0, 0, 1]]
-        self.deltas = (np.linalg.inv(rotation_map), odometry)
+        rotation_map = [[cosines, sines, 0], [-sines, cosines, 0], [0, 0, 1]]
+        self.deltas[:, 0] = cosines*odometry[0] - sines*odometry[1]
+        self.deltas[:,1] = sines*odometry[0] + cosines*odometry[1]
+        self.deltas[:,2] = odometry[2]
 
         particles[:, :] += self.deltas
         if not self.deterministic:
