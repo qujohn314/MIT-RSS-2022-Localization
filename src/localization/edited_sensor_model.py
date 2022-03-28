@@ -11,13 +11,13 @@ class SensorModel:
 
     def __init__(self):
         # Fetch parameters
-        
+        """
         self.map_topic = rospy.get_param("~map_topic")
         self.num_beams_per_particle = rospy.get_param("~num_beams_per_particle")
         self.scan_theta_discretization = rospy.get_param("~scan_theta_discretization")
         self.scan_field_of_view = rospy.get_param("~scan_field_of_view")
         self.lidar_scale_to_map_scale = rospy.get_param("~lidar_scale_to_map_scale")
-        
+        """
 
         ####################################
         # TODO: Tune these parameters
@@ -36,6 +36,7 @@ class SensorModel:
         # Precompute the sensor model table
         self.sensor_model_table = np.zeros((self.table_width, self.table_width))
         self.precompute_sensor_model()
+        """
         # Create a simulated laser scan
         self.scan_sim = PyScanSimulator2D(
                 self.num_beams_per_particle,
@@ -53,7 +54,8 @@ class SensorModel:
                 self.map_callback,
                 queue_size=1)
         
-        
+        # self.map_resolution = 
+        """
     def calc_probability(self, z_k, d, z_max):
         p_hit = 0
         p_short = 0
@@ -91,28 +93,45 @@ class SensorModel:
         returns:
             No return type. Directly modify `self.sensor_model_table`.
         """
+        print("Computing Sensor Model Table")
+        hit_array = np.zeros(self.table_width)
         z_max = self.table_width - 1
         for d in range(self.table_width):
-            hit_array = np.zeros(self.table_width)
+            #hit_array = np.zeros(self.table_width)
             total_hit = 0.0
             for z_k in range(self.table_width):
+
+                p_hit = 0
                 p_short = 0
                 p_max = 0
                 p_rand = 0
-                p_hit = ((2*np.pi*self.sigma_hit**2)**(-0.5))*np.e**(-0.5*((z_k-d)**2)/self.sigma_hit**2)
+                #if z_k <= z_max:
+                #    term_1 = (1.0/(2*np.pi*self.sigma_hit**2)**0.5)
+                #    exp_num = -1*(z_k - float(d))**2
+                #    exp_denom = 2 * self.sigma_hit**2
+                #p_hit = ((2*np.pi*self.sigma_hit**2)**(-0.5))*np.e**(-0.5*((z_k-d)**2)/self.sigma_hit**2)
+                p_hit = np.exp(-(float(z_k-d)**2) / (2.0*self.sigma_hit**2)) / (self.sigma_hit * np.sqrt(2.0*np.pi))
                 if z_k <= d and d != 0:
-                    p_short = 2.0/float(d) * (1 - z_k/float(d))
+                    #p_short = 2.0/float(d) * (1 - z_k/float(d))
+                    p_short = 2.0*(d-z_k) / float(d**2)
                 if z_k == self.table_width - 1:
                     p_max = 1.0
+                #if z_k <= z_max and z_k >= z_max - self.eps:
+                #    p_max = 1.0/float(self.eps)
                 if z_k <= z_max:
                     p_rand = 1.0/float(z_max)
                 hit_array[z_k] = p_hit
                 total_hit += p_hit
                 total = (self.alpha_short * p_short) + (self.alpha_max * p_max) + (self.alpha_rand * p_rand)
                 self.sensor_model_table[z_k][d] = total
+            #print(self.sensor_model_table[:,d])
+            #print("Adding in p_hit")
             self.sensor_model_table[:, d] += self.alpha_hit * hit_array/total_hit
-
+            #print(self.sensor_model_table[:,d])
+        #self.sensor_model_table = self.sensor_model_table / np.linalg.norm(self.sensor_model_table, axis=1) # normalize
         self.sensor_model_table = self.sensor_model_table/self.sensor_model_table.sum(axis=0,keepdims=1)
+        print(self.sensor_model_table.sum(axis=0))
+        print(self.sensor_model_table)
         self.map_set = True
 
 
@@ -153,12 +172,15 @@ class SensorModel:
         scaled_observations = observation * to_px
 
         scans = self.scan_sim.scan(particles)
+        print(scans)
         for p in range(N): 
             current_prob = 1.0
             for n in range(self.num_beams_per_particle):
                 d = int(scans[p, n]) 
                 z = int(scaled_observations[n])
                 current_prob *= self.sensor_model_table[z,d]
+                #probabilities[p] += current_prob
+            #probabilities[p] = probabilities[p]/self.num_beams_per_particle # average of probs across beams
             probabilities[p] = current_prob
         return probabilities
 
@@ -196,3 +218,5 @@ class SensorModel:
         print("Map initialized")
 
 
+if __name__ == "__main__":
+    SensorModel()
