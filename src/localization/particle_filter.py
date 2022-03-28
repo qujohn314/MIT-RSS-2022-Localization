@@ -8,6 +8,9 @@ from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseWithCovarianceStamped
 
+import numpy as np
+import quaternion
+
 
 class ParticleFilter:
 
@@ -50,6 +53,8 @@ class ParticleFilter:
         #     odometry you publish here should be with respect to the
         #     "/map" frame.
         self.odom_pub  = rospy.Publisher("/pf/pose/odom", Odometry, queue_size = 1)
+
+        self.particle_pub  = rospy.Publisher("/pf/pose/particles", PoseArray, queue_size = 1)
         
         # Initialize the models
         self.motion_model = MotionModel()
@@ -65,11 +70,27 @@ class ParticleFilter:
         # Publish a transformation frame between the map
         # and the particle_filter_frame.
     
-    def initialize_particles(msg):
+    def initialize_particles(self, pose):
         # get clicked point from rostopic /initialpose
         # generate spread of particles around clicked point
-        raise NotImplementedError
-    
+
+        self.weights = np.ones(self.MAX_PARTICLES) / float(self.MAX_PARTICLES)
+        self.particles[:,0] = pose.position.x + np.random.normal(loc=0.0,scale=0.5,size=self.MAX_PARTICLES)
+        self.particles[:,1] = pose.position.y + np.random.normal(loc=0.0,scale=0.5,size=self.MAX_PARTICLES)
+        self.particles[:,2] = np.as_euler_angles(pose.orientation) + np.random.normal(loc=0.0,scale=0.4,size=self.MAX_PARTICLES)
+
+    def particle_to_pose(particle):
+        pose = Pose()
+        pose.position.x = particle[0]
+        pose.position.y = particle[1]
+        pose.orientation = np.from_euler_angles(particle[2])
+        return pose
+
+    def publish_particles(): 
+        p = PoseArray()
+        p.poses = map(self.particles, particle_to_pose)
+        self.particle_pub.publish(p)
+
     def lidar_callback(msg):
         pass
     
