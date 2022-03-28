@@ -7,7 +7,6 @@ class MotionModel:
     def __init__(self):
 
         ####################################
-        # TODO
         # Do any precomputation for the motion
         # model here.
 
@@ -37,8 +36,6 @@ class MotionModel:
         """
         
         ####################################
-        # TODO
-
         # convert 
         cosines = np.cos(particles[:, 2])
         sines = np.sin(particles[:, 2])

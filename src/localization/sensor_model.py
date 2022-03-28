@@ -137,7 +137,7 @@ class SensorModel:
                 [x1 y0 theta1]
                 [    ...     ]
 
-            observation: A vector of lidar data meas.ured
+            observation: A vector of lidar data measured
                 from the actual lidar.
 
         returns:
