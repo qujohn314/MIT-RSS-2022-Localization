@@ -162,8 +162,8 @@ class SensorModel:
         for p in range(N): 
             current_prob = 1.0
             for n in range(self.num_beams_per_particle):
-                d = int(scaled_scans[p, n]) 
-                z = int(scaled_observations[n])
+                z = int(scaled_scans[p, n]) 
+                d = int(scaled_observations[n])
                 current_prob *= self.sensor_model_table[z,d]
             probabilities[p] = current_prob
         return probabilities
