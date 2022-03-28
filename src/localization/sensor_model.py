@@ -26,7 +26,7 @@ class SensorModel:
         self.alpha_max = 0.07
         self.alpha_rand = 0.12
         self.alphas = [self.alpha_hit, self.alpha_short, self.alpha_max, self.alpha_rand]
-        self.sigma_hit = 8
+        self.sigma_hit = 8.0
         self.eps = 0.1
 
         # Your sensor table will be a `table_width` x `table_width` np array:
@@ -36,7 +36,7 @@ class SensorModel:
         # Precompute the sensor model table
         self.sensor_model_table = np.zeros((self.table_width, self.table_width))
         self.precompute_sensor_model()
-        """
+        
         # Create a simulated laser scan
         self.scan_sim = PyScanSimulator2D(
                 self.num_beams_per_particle,
@@ -55,12 +55,12 @@ class SensorModel:
                 queue_size=1)
         
         # self.map_resolution = 
-        """
+        
     def calc_probability(self, z_k, d, z_max):
-        p_hit = 0
-        p_short = 0
-        p_max = 0
-        p_rand = 0
+        p_hit = 0.0
+        p_short = 0.0
+        p_max = 0.0
+        p_rand = 0.0
         if z_k <= z_max:
             term_1 = (1/(2*np.pi*self.sigma_hit**2)**0.5)
             exp_num = -1*(z_k - d)**2
