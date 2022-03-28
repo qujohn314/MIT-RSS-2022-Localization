@@ -61,18 +61,18 @@ class SensorModel:
         p_short = 0.0
         p_max = 0.0
         p_rand = 0.0
-        if z_k <= z_max:
+        if 0 <= z_k <= z_max:
             term_1 = (1/(2*np.pi*self.sigma_hit**2)**0.5)
             exp_num = -1*(z_k - d)**2
             exp_denom = 2 * self.sigma_hit**2
-            p_hit = ((2*np.pi*self.sigma_hit**2)**(-0.5))*np.e**(-0.5*((z_k-d)**2)/self.sigma_hit**2)
-        if z_k <= d and d != 0:
+            p_hit = term_1 * math.exp(exp_num/exp_denom)
+        if 0 <= z_k <= d and d != 0:
             p_short = 2/d * (1 - z_k/d)
-        if z_k <= z_max and z_k >= z_max - self.eps:
+        if z_max-self.eps <= z_k <= z_max and z_k >= z_max - self.eps:
             p_max = 1/self.eps
-        if z_k <= z_max:
+        if 0 <= z_k <= z_max:
             p_rand = 1/z_max
-        return self.alpha_hit * p_hit + self.alpha_short * p_short + self.alpha_max * p_max + self.alpha_rand * p_rand
+        return [self.alpha_hit * p_hit, self.alpha_short * p_short, self.alpha_max * p_max, self.alpha_rand * p_rand]
     
     def precompute_sensor_model(self):
         """
@@ -95,16 +95,27 @@ class SensorModel:
         """
         print("Computing Sensor Model Table")
         z_max = self.table_width - 1
-        for d in range(self.table_width):
+        vals = np.zeros(self.table_width,self.table_width)
+        for z in range(self.table_width):
             p = np.zeros(4)
-            for z in range(self.table_width):
+            total_hit = 0
+            for d in range(self.table_width):
                 # p[0] = 1.0/(np.sqrt(2.0*np.pi*self.sigma_hit**2))*np.exp(-((z - d)**2)/(2.0*self.sigma_hit**2))
                 # p[1] = 2.0/d*(1 - z/float(d)) if (0 <= z <= d and d != 0) else 0
                 # p[2] = 1.0/self.eps if (z_max - self.eps) <= z <= z_max else 0
                 # p[3] = 1.0/float(z_max) if 0 <= z <= z_max else 0                
                 # self.sensor_model_table[z][d] = np.dot(p, self.alphas)
-                self.sensor_model_table[z][d] = self.calc_probability(z, d, z_max)
+                vals[z][d] = self.calc_probability(z, d, z_max)
+                self.sensor_model_table[z][d] = vals[z][d][0]
+                total_hit += vals[z][d][0]
+
+            #normalization
+            for d in range(self.table_width):
+                self.sensor_model_table[z][d] = vals[z][d][0]/total_hit
+
+        print(self.sensor_model_table.sum(axis=1,keepdims=1))
         #self.sensor_model_table = self.sensor_model_table / np.linalg.norm(self.sensor_model_table, axis=1) # normalize
+
         self.sensor_model_table = self.sensor_model_table/self.sensor_model_table.sum(axis=0,keepdims=1)
         self.map_set = True
 
