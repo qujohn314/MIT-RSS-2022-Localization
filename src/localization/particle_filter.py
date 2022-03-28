@@ -83,7 +83,7 @@ class ParticleFilter:
         self.particles[:, 2] = np.as_euler_angles(pose.orientation) + np.random.normal(loc=0.0, scale=0.4,
                                                                                       size=self.MAX_PARTICLES)
 
-    def particle_to_pose(particle):
+    def particle_to_pose(self, particle):
         # TODO: Does this work?
         pose = Pose()
         pose.position.x = particle[0]
@@ -94,7 +94,7 @@ class ParticleFilter:
     def publish_particles(self):
         # TODO: Does this work?
         p = PoseArray()
-        p.poses = map(self.particles, particle_to_pose)
+        p.poses = np.map(self.particles, self.particle_to_pose)
         self.particle_pub.publish(p)
 
     def lidar_callback(msg):
@@ -104,8 +104,11 @@ class ParticleFilter:
 
     def odom_callback(self, msg):
         #TODO: Fill this out
-        self.motion_model.evaluate(self.particles, msg)
-        raise NotImplementedError
+        x = msg.twist.linear.x
+        y = msg.twist.linear.y
+        theta = msg.twist.angular.z
+        odometry = [x, y, theta]
+        self.particles = self.motion_model.evaluate(self.particles, odometry)
 
     def MCL(self):
         #TODO: Fill this out
