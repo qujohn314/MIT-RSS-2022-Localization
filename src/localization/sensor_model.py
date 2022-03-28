@@ -11,11 +11,13 @@ class SensorModel:
 
     def __init__(self):
         # Fetch parameters
+        """
         self.map_topic = rospy.get_param("~map_topic")
         self.num_beams_per_particle = rospy.get_param("~num_beams_per_particle")
         self.scan_theta_discretization = rospy.get_param("~scan_theta_discretization")
         self.scan_field_of_view = rospy.get_param("~scan_field_of_view")
         self.lidar_scale_to_map_scale = rospy.get_param("~lidar_scale_to_map_scale")
+        """
 
         ####################################
         # TODO: Tune these parameters
@@ -24,7 +26,8 @@ class SensorModel:
         self.alpha_max = 0.07
         self.alpha_rand = 0.12
         self.alphas = [self.alpha_hit, self.alpha_short, self.alpha_max, self.alpha_rand]
-        self.sigma_hit = 0.5
+        self.sigma_hit = 8
+        self.eps = 0.1
 
         # Your sensor table will be a `table_width` x `table_width` np array:
         self.table_width = 201
@@ -33,7 +36,7 @@ class SensorModel:
         # Precompute the sensor model table
         self.sensor_model_table = np.zeros((self.table_width, self.table_width))
         self.precompute_sensor_model()
-
+        """
         # Create a simulated laser scan
         self.scan_sim = PyScanSimulator2D(
                 self.num_beams_per_particle,
@@ -52,7 +55,25 @@ class SensorModel:
                 queue_size=1)
         
         # self.map_resolution = 
-
+        """
+    def calc_probability(self, z_k, d, z_max):
+        p_hit = 0
+        p_short = 0
+        p_max = 0
+        p_rand = 0
+        if z_k <= z_max:
+            term_1 = (1/(2*np.pi*self.sigma_hit**2)**0.5)
+            exp_num = -1*(z_k - d)**2
+            exp_denom = 2 * self.sigma_hit**2
+            p_hit = ((2*np.pi*self.sigma_hit**2)**(-0.5))*np.e**(-0.5*((z_k-d)**2)/self.sigma_hit**2)
+        if z_k <= d and d != 0:
+            p_short = 2/d * (1 - z_k/d)
+        if z_k <= z_max and z_k >= z_max - self.eps:
+            p_max = 1/self.eps
+        if z_k <= z_max:
+            p_rand = 1/z_max
+        return self.alpha_hit * p_hit + self.alpha_short * p_short + self.alpha_max * p_max + self.alpha_rand * p_rand
+    
     def precompute_sensor_model(self):
         """
         Generate and store a table which represents the sensor model.
@@ -72,15 +93,19 @@ class SensorModel:
         returns:
             No return type. Directly modify `self.sensor_model_table`.
         """
+        print("Computing Sensor Model Table")
         z_max = self.table_width - 1
-        for z in range(self.table_width):
-            for d in range(self.table_width):
-                p[0] = 1.0/(np.sqrt(2.0*np.pi*self.sigma_hit**2))*np.exp(-((z - d)**2)/(2.0*self.sigma_hit**2))
-                p[1] = 2.0/d*(1 - z/float(d)) if 0 <= z <= d else 0
-                p[2] = 1.0/eps if (z_max - eps) <= z <= z_max else 0
-                p[3] = 1/float(z_max) if 0 <= z <= z_max else 0                
-                self.sensor_model_table[z][d] = np.dot(p, self.alphas)
-        self.sensor_model_table = self.sensor_model_table / self.sensor_model_table.max(axis=0) # normalize
+        for d in range(self.table_width):
+            p = np.zeros(4)
+            for z in range(self.table_width):
+                # p[0] = 1.0/(np.sqrt(2.0*np.pi*self.sigma_hit**2))*np.exp(-((z - d)**2)/(2.0*self.sigma_hit**2))
+                # p[1] = 2.0/d*(1 - z/float(d)) if (0 <= z <= d and d != 0) else 0
+                # p[2] = 1.0/self.eps if (z_max - self.eps) <= z <= z_max else 0
+                # p[3] = 1.0/float(z_max) if 0 <= z <= z_max else 0                
+                # self.sensor_model_table[z][d] = np.dot(p, self.alphas)
+                self.sensor_model_table[z][d] = self.calc_probability(z, d, z_max)
+        #self.sensor_model_table = self.sensor_model_table / np.linalg.norm(self.sensor_model_table, axis=1) # normalize
+        self.sensor_model_table = self.sensor_model_table/self.sensor_model_table.sum(axis=0,keepdims=1)
         self.map_set = True
 
 
@@ -96,7 +121,7 @@ class SensorModel:
                 [x1 y0 theta1]
                 [    ...     ]
 
-            observation: A vector of lidar data measured
+            observation: A vector of lidar data meas.ured
                 from the actual lidar.
 
         returns:
@@ -123,14 +148,14 @@ class SensorModel:
         scans = self.scan_sim.scan(particles)
         print(scans)
         for p in range(N): 
-            #current_prob = 1.0
+            current_prob = 1.0
             for n in range(self.num_beams_per_particle):
                 d = int(scans[p, n]) 
                 z = int(scaled_observations[n])
-                #current_prob *= self.sensor_model[z][d]
-                probabilities[p] += current_prob
-            probabilities[p] = probabilities[p]/self.num_beams_per_particle # average of probs across beams
-        
+                current_prob *= self.sensor_model_table[z,d]
+                #probabilities[p] += current_prob
+            #probabilities[p] = probabilities[p]/self.num_beams_per_particle # average of probs across beams
+            probabilities[p] = current_prob
         return probabilities
 
         
@@ -165,3 +190,7 @@ class SensorModel:
         self.map_set = True
         self.map_resolution = map_msg.info.resolution
         print("Map initialized")
+
+
+if __name__ == "__main__":
+    SensorModel()
