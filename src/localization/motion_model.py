@@ -1,3 +1,6 @@
+import rospy
+import numpy as np
+
 class MotionModel:
 
     def __init__(self):
