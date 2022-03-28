@@ -94,7 +94,7 @@ class SensorModel:
         returns:
             No return type. Directly modify `self.sensor_model_table`.
         """
-        print("Computing Sensor Model Table")
+        #("Computing Sensor Model Table")
         z_max = self.table_width - 1
         vals = []
         for z in range(self.table_width):
@@ -118,7 +118,7 @@ class SensorModel:
         #    for d in range(self.table_width):
            #     self.sensor_model_table[z][d] += vals[z][d][1] + vals[z][d][2] + vals[z][d][3]
 
-        print(self.sensor_model_table.sum(axis=1,keepdims=1))
+        #print(self.sensor_model_table.sum(axis=1,keepdims=1))
         #self.sensor_model_table = self.sensor_model_table / np.linalg.norm(self.sensor_model_table, axis=1) # normalize
 
         self.sensor_model_table = self.sensor_model_table/self.sensor_model_table.sum(axis=0,keepdims=1)
@@ -162,7 +162,7 @@ class SensorModel:
         scaled_observations = observation * to_px
 
         scans = self.scan_sim.scan(particles)
-        print(scans)
+        #print(scans)
         for p in range(N): 
             current_prob = 1.0
             for n in range(self.num_beams_per_particle):
@@ -205,7 +205,7 @@ class SensorModel:
         # Make the map set
         self.map_set = True
         self.map_resolution = map_msg.info.resolution
-        print("Map initialized")
+        #print("Map initialized")
 
 
 if __name__ == "__main__":
