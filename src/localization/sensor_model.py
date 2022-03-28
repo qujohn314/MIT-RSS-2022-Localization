@@ -15,22 +15,23 @@ class SensorModel:
         self.num_beams_per_particle = rospy.get_param("~num_beams_per_particle")
         self.scan_theta_discretization = rospy.get_param("~scan_theta_discretization")
         self.scan_field_of_view = rospy.get_param("~scan_field_of_view")
+        self.lidar_scale_to_map_scale = rospy.get_param("~lidar_scale_to_map_scale")
 
         ####################################
-        # TODO
-        # Adjust these parameters
-        self.alpha_hit = 0
-        self.alpha_short = 0
-        self.alpha_max = 0
-        self.alpha_rand = 0
-        self.sigma_hit = 0
+        # TODO: Tune these parameters
+        self.alpha_hit = 0.74
+        self.alpha_short = 0.07
+        self.alpha_max = 0.07
+        self.alpha_rand = 0.12
+        self.alphas = [self.alpha_hit, self.alpha_short, self.alpha_max, self.alpha_rand]
+        self.sigma_hit = 0.5
 
         # Your sensor table will be a `table_width` x `table_width` np array:
         self.table_width = 201
         ####################################
 
         # Precompute the sensor model table
-        self.sensor_model_table = None
+        self.sensor_model_table = np.zeros((self.table_width, self.table_width))
         self.precompute_sensor_model()
 
         # Create a simulated laser scan
@@ -49,6 +50,8 @@ class SensorModel:
                 OccupancyGrid,
                 self.map_callback,
                 queue_size=1)
+        
+        # self.map_resolution = 
 
     def precompute_sensor_model(self):
         """
@@ -69,7 +72,17 @@ class SensorModel:
         returns:
             No return type. Directly modify `self.sensor_model_table`.
         """
-        raise NotImplementedError
+        z_max = self.table_width - 1
+        for z in range(self.table_width):
+            for d in range(self.table_width):
+                p[0] = 1.0/(np.sqrt(2.0*np.pi*self.sigma_hit**2))*np.exp(-((z - d)**2)/(2.0*self.sigma_hit**2))
+                p[1] = 2.0/d*(1 - z/float(d)) if 0 <= z <= d else 0
+                p[2] = 1.0/eps if (z_max - eps) <= z <= z_max else 0
+                p[3] = 1/float(z_max) if 0 <= z <= z_max else 0                
+                self.sensor_model_table[z][d] = np.dot(p, self.alphas)
+        self.sensor_model_table = self.sensor_model_table / self.sensor_model_table.max(axis=0) # normalize
+        self.map_set = True
+
 
     def evaluate(self, particles, observation):
         """
@@ -102,8 +115,25 @@ class SensorModel:
         # You will probably want to use this function
         # to perform ray tracing from all the particles.
         # This produces a matrix of size N x num_beams_per_particle 
+        N = len(particles)
+        probabilities = np.zeros(N)
+        to_px = 1.0/(self.map_resolution*self.lidar_scale_to_map_scale)
+        scaled_observations = observation * to_px
 
         scans = self.scan_sim.scan(particles)
+        print(scans)
+        for p in range(N): 
+            #current_prob = 1.0
+            for n in range(self.num_beams_per_particle):
+                d = int(scans[p, n]) 
+                z = int(scaled_observations[n])
+                #current_prob *= self.sensor_model[z][d]
+                probabilities[p] += current_prob
+            probabilities[p] = probabilities[p]/self.num_beams_per_particle # average of probs across beams
+        
+        return probabilities
+
+        
 
         ####################################
 
@@ -133,5 +163,5 @@ class SensorModel:
 
         # Make the map set
         self.map_set = True
-
+        self.map_resolution = map_msg.info.resolution
         print("Map initialized")
