@@ -1,4 +1,5 @@
 import numpy as np
+import math
 from scan_simulator_2d import PyScanSimulator2D
 
 import rospy
@@ -95,20 +96,21 @@ class SensorModel:
         """
         print("Computing Sensor Model Table")
         z_max = self.table_width - 1
-        vals = np.zeros((self.table_width,self.table_width))
+        vals = []
         for z in range(self.table_width):
             p = np.zeros(4)
             total_hit = 0
+            arr = []
             for d in range(self.table_width):
                 # p[0] = 1.0/(np.sqrt(2.0*np.pi*self.sigma_hit**2))*np.exp(-((z - d)**2)/(2.0*self.sigma_hit**2))
                 # p[1] = 2.0/d*(1 - z/float(d)) if (0 <= z <= d and d != 0) else 0
                 # p[2] = 1.0/self.eps if (z_max - self.eps) <= z <= z_max else 0
                 # p[3] = 1.0/float(z_max) if 0 <= z <= z_max else 0                
                 # self.sensor_model_table[z][d] = np.dot(p, self.alphas)
-                vals[z][d] = self.calc_probability(z, d, z_max)
-                self.sensor_model_table[z][d] = vals[z][d][0]
-                total_hit += vals[z][d][0]
+                arr.append(self.calc_probability(z, d, z_max))
+                total_hit += arr[d][0]
 
+            vals.append(arr)
             #normalization
             for d in range(self.table_width):
                 self.sensor_model_table[z][d] = vals[z][d][0]/total_hit
