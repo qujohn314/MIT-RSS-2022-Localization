@@ -128,7 +128,7 @@ class SensorModel:
                 [x1 y0 theta1]
                 [    ...     ]
 
-            observation: A vector of lidar data meas.ured
+            observation: A vector of lidar data measured
                 from the actual lidar.
 
         returns:
@@ -152,11 +152,16 @@ class SensorModel:
         to_px = 1.0/(self.map_resolution*self.lidar_scale_to_map_scale)
         scaled_observations = observation * to_px
 
-        scans = self.scan_sim.scan(particles)
+        scaled_scans = self.scan_sim.scan(particles) * np.cos(particles[:,2]) * to_px
+
+        scaled_observations[scaled_observations > 200] = 200.0
+        scaled_observations[scaled_observations < 0] = 0.0
+        scaled_scans[scaled_scans < 0] = 0.0
+        scaled_scans[scaled_scans > 200] = 200.0
         for p in range(N): 
             current_prob = 1.0
             for n in range(self.num_beams_per_particle):
-                d = int(scans[p, n]) 
+                d = int(scaled_scans[p, n]) 
                 z = int(scaled_observations[n])
                 current_prob *= self.sensor_model_table[z,d]
             probabilities[p] = current_prob
