@@ -153,8 +153,8 @@ class SensorModel:
                 d = int(scans[p, n]) 
                 z = int(scaled_observations[n])
                 current_prob *= self.sensor_model_table[z,d]
-                #probabilities[p] += current_prob
-            #probabilities[p] = probabilities[p]/self.num_beams_per_particle # average of probs across beams
+                probabilities[p] += current_prob
+            probabilities[p] = probabilities[p]/self.num_beams_per_particle # average of probs across beams
             probabilities[p] = current_prob
         return probabilities
 
