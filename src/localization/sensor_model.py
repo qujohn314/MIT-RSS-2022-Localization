@@ -113,6 +113,9 @@ class SensorModel:
             for d in range(self.table_width):
                 self.sensor_model_table[z][d] = vals[z][d][0]/total_hit
 
+        #    for d in range(self.table_width):
+           #     self.sensor_model_table[z][d] += vals[z][d][1] + vals[z][d][2] + vals[z][d][3]
+
         print(self.sensor_model_table.sum(axis=1,keepdims=1))
         #self.sensor_model_table = self.sensor_model_table / np.linalg.norm(self.sensor_model_table, axis=1) # normalize
 
