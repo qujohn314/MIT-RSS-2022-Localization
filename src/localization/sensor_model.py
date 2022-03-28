@@ -150,12 +150,14 @@ class SensorModel:
         # This produces a matrix of size N x num_beams_per_particle 
         N = len(particles)
         probabilities = np.zeros(N)
-        to_px = 1.0/(self.map_resolution*self.lidar_scale_to_map_scale)
+        to_px = 1.0/(self.map_resolution*self.lidar_scale_to_map_scale*1.0)
+       
+        # measured distance
         scaled_observations = observation * to_px
 
-        #scaled_scans = (self.scan_sim.scan(particles).T * np.cos(particles[:,2])).T * to_px
+        # ray tracing: true distance
         scaled_scans = self.scan_sim.scan(particles) * to_px
-
+        
         scaled_observations[scaled_observations > 200] = 200.0
         scaled_observations[scaled_observations < 0] = 0.0
         scaled_scans[scaled_scans < 0] = 0.0
@@ -163,9 +165,9 @@ class SensorModel:
         for p in range(N): 
             current_prob = 1.0
             for n in range(self.num_beams_per_particle):
-                z = int(scaled_scans[p, n]) 
-                d = int(scaled_observations[n])
-                current_prob *= self.sensor_model_table[z,d]
+                d = int(scaled_scans[p][n]) 
+                z = int(scaled_observations[n])
+                current_prob *= self.sensor_model_table[z][d]
             probabilities[p] = current_prob
         return probabilities
 
