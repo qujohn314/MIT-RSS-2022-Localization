@@ -105,7 +105,6 @@ class ParticleFilter:
     def odom_callback(self, msg):
         #TODO: Fill this out
         self.motion_model.evaluate(self.particles, msg)
-        raise NotImplementedError
 
     def MCL(self):
         #TODO: Fill this out
