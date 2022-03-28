@@ -153,7 +153,8 @@ class SensorModel:
         to_px = 1.0/(self.map_resolution*self.lidar_scale_to_map_scale)
         scaled_observations = observation * to_px
 
-        scaled_scans = (self.scan_sim.scan(particles).T * np.cos(particles[:,2])).T * to_px
+        #scaled_scans = (self.scan_sim.scan(particles).T * np.cos(particles[:,2])).T * to_px
+        scaled_scans = self.scan_sim.scan(particles) * to_px
 
         scaled_observations[scaled_observations > 200] = 200.0
         scaled_observations[scaled_observations < 0] = 0.0
