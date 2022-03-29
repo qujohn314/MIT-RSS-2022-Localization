@@ -6,11 +6,12 @@ from motion_model import MotionModel
 
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
-from geometry_msgs.msg import PoseWithCovarianceStamped, Transform
+from geometry_msgs.msg import PoseWithCovarianceStamped, Transform, PoseArray
 
 import numpy as np
-import quaternion
 import math
+
+from scipy.spatial.transform import Rotation as R
 
 class ParticleFilter:
 
@@ -70,8 +71,8 @@ class ParticleFilter:
         # Initialize the models
         self.motion_model = MotionModel()
         self.sensor_model = SensorModel()
-        self.particles = np.zeros((200, 3))
-        self.proposed_particles = np.zeros((200, 3))
+        self.particles = np.zeros((self.MAX_PARTICLES, 3))
+        self.proposed_particles = np.zeros((self.MAX_PARTICLES, 3))
 
         self.weights = np.ones(self.MAX_PARTICLES) / float(self.MAX_PARTICLES)
 
@@ -85,19 +86,29 @@ class ParticleFilter:
         # Publish a transformation frame between the map
         # and the particle_filter_frame.
     
-    def initialize_particles(self, pose):
+    def initialize_particles(self, msg):
         # get clicked point from rostopic /initialpose
         # generate spread of particles around clicked points
-        self.particles[:, 0] = pose.position.x + np.random.normal(loc=0.0, scale=0.5, size=self.MAX_PARTICLES)
-        self.particles[:, 1] = pose.position.y + np.random.normal(loc=0.0, scale=0.5, size=self.MAX_PARTICLES)
-        self.particles[:, 2] = np.as_euler_angles(pose.orientation) + np.random.normal(loc=0.0, scale=0.4,
+        print("Initialized particle!")
+        self.particles[:, 0] = msg.pose.pose.position.x + np.random.normal(loc=0.0, scale=0.5, size=self.MAX_PARTICLES)
+        self.particles[:, 1] = msg.pose.pose.position.y + np.random.normal(loc=0.0, scale=0.5, size=self.MAX_PARTICLES)
+        self.particles[:, 2] = self.quat_to_euler(msg.pose.pose.orientation) + np.random.normal(loc=0.0, scale=0.4,
                                                                                       size=self.MAX_PARTICLES)
+        self.publish_particles()
+
+    def euler_to_quat(self, euler):
+        r = R.from_euler('xyz', euler)
+        return r.as_quat()
+
+    def quat_to_euler(self, quat):
+        r = R.from_quat(quat)
+        return r.as_euler(quat)
 
     def particle_to_pose(self, particle):
         pose = Pose()
         pose.position.x = particle[0]
         pose.position.y = particle[1]
-        pose.orientation = np.from_euler_angles(particle[2])
+        pose.orientation = self.euler_to_quat(particle[2])
         return pose
 
     def publish_particles(self):
@@ -106,14 +117,16 @@ class ParticleFilter:
         self.particle_pub.publish(p)
 
     def lidar_callback(self, msg):
+        # print("LIDAR CALLBACK --------------------------")
         # get the laser scan data and then feed the data into the sensor model evaluate function
-        observation = msg.ranges
+        observation = np.array(msg.ranges)
         self.weights = self.sensor_model.evaluate(self.particles, observation)
 
     def odom_callback(self, msg):
-        x = msg.twist.linear.x
-        y = msg.twist.linear.y
-        theta = msg.twist.angular.z
+        # print("odom callback")
+        x = msg.twist.twist.linear.x
+        y = msg.twist.twist.linear.y
+        theta = msg.twist.twist.angular.z
         odometry = [x, y, theta]
         self.proposed_particles = self.motion_model.evaluate(self.particles, odometry)
         # motion model is updated much more often than sesor_model, so we call MCL after updated motion model
@@ -121,17 +134,19 @@ class ParticleFilter:
 
     def MCL(self):
         # using weights and proposed particles, update particles
-        self.particles = np.random.choice(self.proposed_particles, size=self.MAX_PARTICLES, p=self.weights)
+        sample_idx = np.random.choice(range(self.MAX_PARTICLES), size=self.MAX_PARTICLES, p=self.weights)
+        self.particles = self.particles[sample_idx]
+        
         self.publish_transform()
         
     def publish_transform(self):
         transform = Transform()
-        x_mean = np.mean(self.particles(:,0))
-        y_mean = np.mean(self.particles(:,1))
+        x_mean = np.mean(self.particles[:,0])
+        y_mean = np.mean(self.particles[:,1])
         
-        angular_mean = np.arctan2(np.sum(np.sin(self.particles(:,2))), np.sum(np.cos(self.particles(:,2))))
+        angular_mean = np.arctan2(np.sum(np.sin(self.particles[:,2])), np.sum(np.cos(self.particles[:,2])))
         transform.translation = [x_mean, y_mean, 0]
-        transform.rotation = np.quaternion_from_euler([0, 0, angular_mean])
+        transform.rotation = self.euler_to_quat([0, 0, angular_mean])
         self.transform_pub.publish()
 
 

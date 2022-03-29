@@ -12,13 +12,13 @@ class SensorModel:
 
     def __init__(self):
         # Fetch parameters
-        
+
         self.map_topic = rospy.get_param("~map_topic")
         self.num_beams_per_particle = rospy.get_param("~num_beams_per_particle")
         self.scan_theta_discretization = rospy.get_param("~scan_theta_discretization")
         self.scan_field_of_view = rospy.get_param("~scan_field_of_view")
         self.lidar_scale_to_map_scale = rospy.get_param("~lidar_scale_to_map_scale")
-        
+
 
         ####################################
         # TODO: Tune these parameters
@@ -43,7 +43,7 @@ class SensorModel:
                 self.scan_field_of_view,
                 0, # This is not the simulator, don't add noise
                 0.01, # This is used as an epsilon
-                self.scan_theta_discretization) 
+                self.scan_theta_discretization)
 
         # Subscribe to the map
         self.map = None
@@ -53,8 +53,8 @@ class SensorModel:
                 OccupancyGrid,
                 self.map_callback,
                 queue_size=1)
-        
-        
+
+
     def calc_probability(self, z_k, d, z_max):
         p_hit = 0.0
         p_short = 0.0
@@ -72,12 +72,12 @@ class SensorModel:
         if 0 <= z_k <= z_max:
             p_rand = 1/z_max
         return [self.alpha_hit * p_hit, self.alpha_short * p_short, self.alpha_max * p_max, self.alpha_rand * p_rand]
-    
+
     def precompute_sensor_model(self):
         """
         Generate and store a table which represents the sensor model.
-        
-        For each discrete computed range value, this provides the probability of 
+
+        For each discrete computed range value, this provides the probability of
         measuring any (discrete) range. This table is indexed by the sensor model
         at runtime by discretizing the measurements and computed ranges from
         RangeLibc.
@@ -88,7 +88,7 @@ class SensorModel:
 
         args:
             N/A
-        
+
         returns:
             No return type. Directly modify `self.sensor_model_table`.
         """
@@ -124,7 +124,7 @@ class SensorModel:
 
         args:
             particles: An Nx3 matrix of the form:
-            
+
                 [x0 y0 theta0]
                 [x1 y0 theta1]
                 [    ...     ]
@@ -148,6 +148,8 @@ class SensorModel:
         # You will probably want to use this function
         # to perform ray tracing from all the particles.
         # This produces a matrix of size N x num_beams_per_particle 
+        
+
         N = len(particles)
         probabilities = np.zeros(N)
         to_px = 1.0/(self.map_resolution*self.lidar_scale_to_map_scale)
@@ -155,9 +157,8 @@ class SensorModel:
         # measured distance
         scaled_observations = observation * to_px
 
-        # ray tracing: true distance
         scaled_scans = self.scan_sim.scan(particles) * to_px
-        
+
         scaled_observations[scaled_observations > 200] = 200.0
         scaled_observations[scaled_observations < 0] = 0.0
         scaled_scans[scaled_scans < 0] = 0.0
@@ -172,11 +173,7 @@ class SensorModel:
 
         #Descrease peaks in distribution 2.175
         return np.power(probabilities,1/2.2)
-
         
-
-        ####################################
-
     def map_callback(self, map_msg):
         # Convert the map to a numpy array
         self.map = np.array(map_msg.data, np.double)/100.
@@ -204,6 +201,4 @@ class SensorModel:
         # Make the map set
         self.map_set = True
         self.map_resolution = map_msg.info.resolution
-        print("Map initialized")
-
-
+        #print("Map initialized")
