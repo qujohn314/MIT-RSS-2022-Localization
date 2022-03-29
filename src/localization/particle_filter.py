@@ -6,11 +6,12 @@ from motion_model import MotionModel
 
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
-from geometry_msgs.msg import PoseWithCovarianceStamped, Transform, PoseArray, Pose, Quaternion
+from geometry_msgs.msg import PoseWithCovarianceStamped, Transform, TransformStamped, PoseArray, Pose, Quaternion
 
 import numpy as np
 import math
 import threading
+import tf2_ros
 
 from scipy.spatial.transform import Rotation as R
 
@@ -27,6 +28,8 @@ class ParticleFilter:
         # self.transform_topic = "/base_link" # for actual car 
 
         ###
+
+        self.br = tf2_ros.TransformBroadcaster()
         
 
         # Get parameters
@@ -67,7 +70,9 @@ class ParticleFilter:
         #     "/map" frame.
         self.odom_pub = rospy.Publisher("/pf/pose/odom", Odometry, queue_size=1)
         self.particle_pub = rospy.Publisher("/pf/pose/particles", PoseArray, queue_size=1)
-        self.transform_pub = rospy.Publisher(self.transform_topic, Transform, queue_size=1)
+        
+
+        # self.transform_pub = rospy.Publisher(self.transform_topic, Transform, queue_size=1)
         
         # Initialize the models
         self.motion_model = MotionModel()
@@ -96,7 +101,7 @@ class ParticleFilter:
         # get clicked point from rostopic /initialpose
         # generate spread of particles around clicked points
         print("Initialized particle!")
-        print(msg.header.frame_id)
+        # print(msg.header.frame_id)
         self.particles[:, 0] = msg.pose.pose.position.x + np.random.normal(loc=0.0, scale=0.5, size=self.MAX_PARTICLES)
         self.particles[:, 1] = msg.pose.pose.position.y + np.random.normal(loc=0.0, scale=0.5, size=self.MAX_PARTICLES)
         self.particles[:, 2] = self.quat_to_euler(msg.pose.pose.orientation)[-1] + np.random.normal(loc=0.0, scale=0.4,
@@ -162,17 +167,39 @@ class ParticleFilter:
         self.publish_transform()
         
     def publish_transform(self):
+        # This is the previous code for transform
+        '''
         transform = Transform()
-        transform.header.frame_id = "/map"
         x_mean = np.mean(self.particles[:,0])
         y_mean = np.mean(self.particles[:,1])
         
         angular_mean = np.arctan2(np.sum(np.sin(self.particles[:,2])), np.sum(np.cos(self.particles[:,2])))
         transform.translation = [x_mean, y_mean, 0]
+
         quat_array = self.euler_to_quat([0, 0, angular_mean])
         transform.rotation = Quaternion(quat_array[0], quat_array[1], quat_array[2], quat_array[3])
         print(transform)
-        self.transform_pub.publish()
+        self.br.sendTransform(transform)
+        '''
+
+        transform = TransformStamped()
+        x_mean = np.mean(self.particles[:,0])
+        y_mean = np.mean(self.particles[:,1])
+        
+        angular_mean = np.arctan2(np.sum(np.sin(self.particles[:,2])), np.sum(np.cos(self.particles[:,2])))
+        transform.header.stamp = rospy.Time()
+        transform.header.frame_id = 'base_link_pf'
+        transform.header.child_frame_id = 'map'
+        transform.transform.translation.x = x_mean
+        transform.transform.translation.y = y_mean
+
+        quat_array = self.euler_to_quat([0, 0, angular_mean])
+        transform.transform.rotation.x = quat_array[0]
+        transform.transform.rotation.y = quat_array[1]
+        transform.transform.rotation.z = quat_array[2]
+        transform.transform.rotation.w = quat_array[3]
+        print(transform)
+        self.br.sendTransform(transform)
 
 
 if __name__ == "__main__":
