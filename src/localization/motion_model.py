@@ -7,7 +7,6 @@ class MotionModel:
     def __init__(self):
 
         ####################################
-        # TODO
         # Do any precomputation for the motion
         # model here.
 
@@ -37,22 +36,20 @@ class MotionModel:
         """
         
         ####################################
-        # TODO
-
         # convert 
-        cosines = np.cos(particles[:,2])
-        sines = np.sin(particles[:,2])
+        cosines = np.cos(particles[:, 2])
+        sines = np.sin(particles[:, 2])
 
         rotation_map = [[cosines, sines, 0], [-sines, cosines, 0], [0, 0, 1]]
         self.deltas[:, 0] = cosines*odometry[0] - sines*odometry[1]
         self.deltas[:,1] = sines*odometry[0] + cosines*odometry[1]
         self.deltas[:,2] = odometry[2]
 
-        particles[:,:] += self.deltas
+        particles[:, :] += self.deltas
         if not self.deterministic:
-            particles[:,0] += np.random.normal(loc=0.0,scale=0.05,size=particles.shape[0])
-            particles[:,1] += np.random.normal(loc=0.0,scale=0.025,size=particles.shape[0])
-            particles[:,2] += np.random.normal(loc=0.0,scale=0.25,size=particles.shape[0])
+            particles[:, 0] += np.random.normal(loc=0.0, scale=0.05, size=particles.shape[0])
+            particles[:, 1] += np.random.normal(loc=0.0, scale=0.025, size=particles.shape[0])
+            particles[:, 2] += np.random.normal(loc=0.0, scale=0.25, size=particles.shape[0])
 
         return particles        
 

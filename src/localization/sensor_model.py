@@ -1,4 +1,5 @@
 import numpy as np
+import math
 from scan_simulator_2d import PyScanSimulator2D
 
 import rospy
@@ -11,13 +12,13 @@ class SensorModel:
 
     def __init__(self):
         # Fetch parameters
-        
+
         self.map_topic = rospy.get_param("~map_topic")
         self.num_beams_per_particle = rospy.get_param("~num_beams_per_particle")
         self.scan_theta_discretization = rospy.get_param("~scan_theta_discretization")
         self.scan_field_of_view = rospy.get_param("~scan_field_of_view")
         self.lidar_scale_to_map_scale = rospy.get_param("~lidar_scale_to_map_scale")
-        
+
 
         ####################################
         # TODO: Tune these parameters
@@ -42,7 +43,7 @@ class SensorModel:
                 self.scan_field_of_view,
                 0, # This is not the simulator, don't add noise
                 0.01, # This is used as an epsilon
-                self.scan_theta_discretization) 
+                self.scan_theta_discretization)
 
         # Subscribe to the map
         self.map = None
@@ -52,31 +53,31 @@ class SensorModel:
                 OccupancyGrid,
                 self.map_callback,
                 queue_size=1)
-        
-        
+
+
     def calc_probability(self, z_k, d, z_max):
-        p_hit = 0
-        p_short = 0
-        p_max = 0
-        p_rand = 0
-        if z_k <= z_max:
+        p_hit = 0.0
+        p_short = 0.0
+        p_max = 0.0
+        p_rand = 0.0
+        if 0 <= z_k <= z_max:
             term_1 = (1/(2*np.pi*self.sigma_hit**2)**0.5)
             exp_num = -1*(z_k - d)**2
             exp_denom = 2 * self.sigma_hit**2
-            p_hit = ((2*np.pi*self.sigma_hit**2)**(-0.5))*np.e**(-0.5*((z_k-d)**2)/self.sigma_hit**2)
-        if z_k <= d and d != 0:
+            p_hit = term_1 * math.exp(exp_num/exp_denom)
+        if 0 <= z_k <= d and d != 0:
             p_short = 2/d * (1 - z_k/d)
-        if z_k <= z_max and z_k >= z_max - self.eps:
+        if z_max-self.eps <= z_k <= z_max and z_k >= z_max - self.eps:
             p_max = 1/self.eps
-        if z_k <= z_max:
+        if 0 <= z_k <= z_max:
             p_rand = 1/z_max
-        return self.alpha_hit * p_hit + self.alpha_short * p_short + self.alpha_max * p_max + self.alpha_rand * p_rand
-    
+        return [self.alpha_hit * p_hit, self.alpha_short * p_short, self.alpha_max * p_max, self.alpha_rand * p_rand]
+
     def precompute_sensor_model(self):
         """
         Generate and store a table which represents the sensor model.
-        
-        For each discrete computed range value, this provides the probability of 
+
+        For each discrete computed range value, this provides the probability of
         measuring any (discrete) range. This table is indexed by the sensor model
         at runtime by discretizing the measurements and computed ranges from
         RangeLibc.
@@ -87,7 +88,7 @@ class SensorModel:
 
         args:
             N/A
-        
+
         returns:
             No return type. Directly modify `self.sensor_model_table`.
         """
@@ -123,7 +124,7 @@ class SensorModel:
 
         args:
             particles: An Nx3 matrix of the form:
-            
+
                 [x0 y0 theta0]
                 [x1 y0 theta1]
                 [    ...     ]
@@ -162,9 +163,9 @@ class SensorModel:
         for p in range(scaled_scans): 
             current_prob = 1.0
             for n in range(self.num_beams_per_particle):
-                d = int(scaled_scans[p, n]) 
+                d = int(scaled_scans[p][n])
                 z = int(scaled_observations[n])
-                current_prob *= self.sensor_model_table[z,d]
+                current_prob *= self.sensor_model_table[z][d]
             probabilities[p] = current_prob
         return probabilities
         '''
@@ -210,6 +211,4 @@ class SensorModel:
         # Make the map set
         self.map_set = True
         self.map_resolution = map_msg.info.resolution
-        print("Map initialized")
-
-
+        #print("Map initialized")
