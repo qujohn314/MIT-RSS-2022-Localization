@@ -14,6 +14,8 @@ import threading
 
 from scipy.spatial.transform import Rotation as R
 
+lock = threading.Lock()
+
 class ParticleFilter:
 
     def __init__(self):
@@ -22,7 +24,6 @@ class ParticleFilter:
         
         # Starting value. Can raise this later
         self.MAX_PARTICLES = 200
-        
         self.transform_topic = "/base_link_pf" # for sim
         # self.transform_topic = "/base_link" # for actual car 
 
@@ -123,14 +124,18 @@ class ParticleFilter:
         self.particle_pub.publish(p)
 
     def lidar_callback(self, msg):
+        # lock.acquire(blocking=True)
         # print("LIDAR CALLBACK --------------------------")
         # get the laser scan data and then feed the data into the sensor model evaluate function
         # observation = np.array(msg.ranges)
         # self.weights = self.sensor_model.evaluate(self.particles, observation)
         # print(self.weights)
+            
+        # lock.release()
         pass
 
     def odom_callback(self, msg):
+        # lock.acquire(blocking=True)
         # print("odom callback")
         # x = msg.twist.twist.linear.x
         # y = msg.twist.twist.linear.y
@@ -139,6 +144,7 @@ class ParticleFilter:
         # self.proposed_particles = self.motion_model.evaluate(self.particles, odometry)
         # # motion model is updated much more often than sesor_model, so we call MCL after updated motion model
         # self.MCL()
+        # lock.release()
         pass
 
     def MCL(self):
