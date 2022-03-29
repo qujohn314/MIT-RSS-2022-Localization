@@ -30,7 +30,6 @@ class ParticleFilter:
 
         ###
 
-        self.br = tf2_ros.TransformBroadcaster()
 
 
         # Get parameters
@@ -73,7 +72,7 @@ class ParticleFilter:
         self.particle_pub = rospy.Publisher("/pf/pose/particles", PoseArray, queue_size=1)
 
 
-        # self.transform_pub = rospy.Publisher(self.transform_topic, Transform, queue_size=1)
+        self.transform_pub = rospy.Publisher(self.transform_topic, PoseWithCovarianceStamped, queue_size=1)
 
         # Initialize the models
         self.motion_model = MotionModel()
@@ -139,26 +138,28 @@ class ParticleFilter:
 
 
     def lidar_callback(self, msg):
-        # lock.acquire(blocking=True)
+        
         # print("LIDAR CALLBACK --------------------------")
         # get the laser scan data and then feed the data into the sensor model evaluate function
         if not self.particles_initialized:
             return
+        lock.acquire()
         observation = np.array(msg.ranges)
         self.weights = self.sensor_model.evaluate(self.particles, observation)
+        lock.release()
 
     def odom_callback(self, msg):
-        # lock.acquire(blocking=True)
+        
         # print("odom callback")
         if not self.particles_initialized:
             return
-
+        lock.acquire()
         x = msg.twist.twist.linear.x
         y = msg.twist.twist.linear.y
         theta = msg.twist.twist.angular.z
         odometry = [x, y, theta]
         self.proposed_particles = self.motion_model.evaluate(self.particles, odometry)
-
+        lock.release()
         # motion model is updated much more often than sensor_model, so we call MCL after updated motion model
         self.MCL()
 
@@ -185,24 +186,19 @@ class ParticleFilter:
         self.br.sendTransform(transform)
         '''
 
-        transform = TransformStamped()
+        transform = PoseWithCovarianceStamped()
         x_mean = np.mean(self.particles[:,0])
         y_mean = np.mean(self.particles[:,1])
 
         angular_mean = np.arctan2(np.sum(np.sin(self.particles[:,2])), np.sum(np.cos(self.particles[:,2])))
-        transform.header.stamp = rospy.Time()
-        transform.header.frame_id = 'base_link_pf'
-        transform.header.child_frame_id = 'map'
-        transform.transform.translation.x = x_mean
-        transform.transform.translation.y = y_mean
+
+        transform.header.frame_id = "map"
+        transform.pose.pose.position.x = x_mean
+        transform.pose.pose.position.y = y_mean
 
         quat_array = self.euler_to_quat([0, 0, angular_mean])
-        transform.transform.rotation.x = quat_array[0]
-        transform.transform.rotation.y = quat_array[1]
-        transform.transform.rotation.z = quat_array[2]
-        transform.transform.rotation.w = quat_array[3]
-        print(transform)
-        self.br.sendTransform(transform)
+        transform.pose.pose.orientation = Quaternion(quat_array[0], quat_array[1], quat_array[2], quat_array[3])
+        self.transform_pub.publish(transform)
 
 
 if __name__ == "__main__":
