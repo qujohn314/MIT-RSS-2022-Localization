@@ -15,22 +15,23 @@ import tf2_ros
 
 from scipy.spatial.transform import Rotation as R
 
+lock = threading.Lock()
+
 class ParticleFilter:
 
     def __init__(self):
         ###
         # IMPORTANT: Below are parameters to tweak or to change between simulation/real robot
-        
+
         # Starting value. Can raise this later
         self.MAX_PARTICLES = 200
-        
         self.transform_topic = "/base_link_pf" # for sim
-        # self.transform_topic = "/base_link" # for actual car 
+        # self.transform_topic = "/base_link" # for actual car
 
         ###
 
         self.br = tf2_ros.TransformBroadcaster()
-        
+
 
         # Get parameters
         self.particle_filter_frame = \
@@ -70,10 +71,10 @@ class ParticleFilter:
         #     "/map" frame.
         self.odom_pub = rospy.Publisher("/pf/pose/odom", Odometry, queue_size=1)
         self.particle_pub = rospy.Publisher("/pf/pose/particles", PoseArray, queue_size=1)
-        
+
 
         # self.transform_pub = rospy.Publisher(self.transform_topic, Transform, queue_size=1)
-        
+
         # Initialize the models
         self.motion_model = MotionModel()
         self.sensor_model = SensorModel()
@@ -83,20 +84,20 @@ class ParticleFilter:
         self.weights = np.ones(self.MAX_PARTICLES) / float(self.MAX_PARTICLES)
 
         self.particles_initialized = False
-        
+
         #threading.Thread(target=thread_function, args=(index,))
 
 
         # Implement the MCL algorithm
         # using the sensor model and the motion model
-        
+
         # Make sure you include some way to initialize
         # your particles, ideally with some sort
         # of interactive interface in rviz
         #
         # Publish a transformation frame between the map
         # and the particle_filter_frame.
-    
+
     def initialize_particles(self, msg):
         # get clicked point from rostopic /initialpose
         # generate spread of particles around clicked points
@@ -106,7 +107,7 @@ class ParticleFilter:
         self.particles[:, 1] = msg.pose.pose.position.y + np.random.normal(loc=0.0, scale=0.5, size=self.MAX_PARTICLES)
         self.particles[:, 2] = self.quat_to_euler(msg.pose.pose.orientation)[-1] + np.random.normal(loc=0.0, scale=0.4,
                                                                                       size=self.MAX_PARTICLES)
-        self.publish_particles() 
+        self.publish_particles()
 
     def euler_to_quat(self, euler):
         r = R.from_euler('xyz', euler)
@@ -123,7 +124,7 @@ class ParticleFilter:
         pose.position.y = particle[1]
         quat_array = self.euler_to_quat([0, 0, particle[2]])
         pose.orientation = Quaternion(quat_array[0], quat_array[1], quat_array[2], quat_array[3])
-        
+
         return pose
 
     def publish_particles(self):
@@ -138,6 +139,7 @@ class ParticleFilter:
 
 
     def lidar_callback(self, msg):
+        # lock.acquire(blocking=True)
         # print("LIDAR CALLBACK --------------------------")
         # get the laser scan data and then feed the data into the sensor model evaluate function
         if not self.particles_initialized:
@@ -146,9 +148,10 @@ class ParticleFilter:
         self.weights = self.sensor_model.evaluate(self.particles, observation)
 
     def odom_callback(self, msg):
+        # lock.acquire(blocking=True)
         # print("odom callback")
         if not self.particles_initialized:
-            return 
+            return
 
         x = msg.twist.twist.linear.x
         y = msg.twist.twist.linear.y
@@ -163,16 +166,16 @@ class ParticleFilter:
         # using weights and proposed particles, update particles
         sample_idx = np.random.choice(range(self.MAX_PARTICLES), size=self.MAX_PARTICLES, p=self.weights/np.sum(self.weights))
         self.particles = self.particles[sample_idx]
-        
+
         self.publish_transform()
-        
+
     def publish_transform(self):
         # This is the previous code for transform
         '''
         transform = Transform()
         x_mean = np.mean(self.particles[:,0])
         y_mean = np.mean(self.particles[:,1])
-        
+
         angular_mean = np.arctan2(np.sum(np.sin(self.particles[:,2])), np.sum(np.cos(self.particles[:,2])))
         transform.translation = [x_mean, y_mean, 0]
 
@@ -185,7 +188,7 @@ class ParticleFilter:
         transform = TransformStamped()
         x_mean = np.mean(self.particles[:,0])
         y_mean = np.mean(self.particles[:,1])
-        
+
         angular_mean = np.arctan2(np.sum(np.sin(self.particles[:,2])), np.sum(np.cos(self.particles[:,2])))
         transform.header.stamp = rospy.Time()
         transform.header.frame_id = 'base_link_pf'
