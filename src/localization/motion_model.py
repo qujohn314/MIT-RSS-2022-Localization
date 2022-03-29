@@ -48,8 +48,8 @@ class MotionModel:
         particles[:, :] += self.deltas
         if not self.deterministic:
             particles[:, 0] += np.random.normal(loc=0.0, scale=0.05, size=particles.shape[0])
-            particles[:, 1] += np.random.normal(loc=0.0, scale=0.025, size=particles.shape[0])
-            particles[:, 2] += np.random.normal(loc=0.0, scale=0.25, size=particles.shape[0])
+            particles[:, 1] += np.random.normal(loc=0.0, scale=0.05, size=particles.shape[0])
+            particles[:, 2] += np.random.normal(loc=0.0, scale=0.025, size=particles.shape[0])
 
         return particles        
 

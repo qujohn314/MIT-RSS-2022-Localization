@@ -55,24 +55,6 @@ class SensorModel:
                 queue_size=1)
 
 
-    def calc_probability(self, z_k, d, z_max):
-        p_hit = 0.0
-        p_short = 0.0
-        p_max = 0.0
-        p_rand = 0.0
-        if 0 <= z_k <= z_max:
-            term_1 = (1/(2*np.pi*self.sigma_hit**2)**0.5)
-            exp_num = -1*(z_k - d)**2
-            exp_denom = 2 * self.sigma_hit**2
-            p_hit = term_1 * math.exp(exp_num/exp_denom)
-        if 0 <= z_k <= d and d != 0:
-            p_short = 2/d * (1 - z_k/d)
-        if z_max-self.eps <= z_k <= z_max and z_k >= z_max - self.eps:
-            p_max = 1/self.eps
-        if 0 <= z_k <= z_max:
-            p_rand = 1/z_max
-        return [self.alpha_hit * p_hit, self.alpha_short * p_short, self.alpha_max * p_max, self.alpha_rand * p_rand]
-
     def precompute_sensor_model(self):
         """
         Generate and store a table which represents the sensor model.
@@ -151,7 +133,7 @@ class SensorModel:
         
 
         N = len(particles)
-        probabilities = np.zeros(N)
+        # probabilities = np.zeros(N)
         to_px = 1.0/(self.map_resolution*self.lidar_scale_to_map_scale)
        
         # measured distance
@@ -163,13 +145,11 @@ class SensorModel:
         scaled_observations[scaled_observations < 0] = 0.0
         scaled_scans[scaled_scans < 0] = 0.0
         scaled_scans[scaled_scans > 200] = 200.0
-        for p in range(N): 
-            current_prob = 1.0
-            for n in range(self.num_beams_per_particle):
-                d = np.rint(scaled_scans[p][n]).astype(int)
-                z = np.rint(scaled_observations[n]).astype(int)
-                current_prob *= self.sensor_model_table[z][d]
-            probabilities[p] = current_prob
+
+        ds = np.rint(scaled_scans).astype(int)
+        zs = np.rint(scaled_observations).astype(int)
+
+        probabilities = np.prod(self.sensor_model_table[zs, ds], axis=1)
 
         #Descrease peaks in distribution 2.175
         return np.power(probabilities,1/2.2)

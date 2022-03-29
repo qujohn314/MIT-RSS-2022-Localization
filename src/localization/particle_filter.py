@@ -5,7 +5,7 @@ from sensor_model import SensorModel
 from motion_model import MotionModel
 
 from sensor_msgs.msg import LaserScan
-from nav_msgs.msg import Odometry
+from nav_msgs.msg import Odometry, OccupancyGrid
 from geometry_msgs.msg import PoseWithCovarianceStamped, Transform, TransformStamped, PoseArray, Pose, Quaternion
 
 import numpy as np
@@ -22,6 +22,8 @@ class ParticleFilter:
     def __init__(self):
         ###
         # IMPORTANT: Below are parameters to tweak or to change between simulation/real robot
+        self.particles_initialized = False
+        self.map_acquired = False
 
         # Starting value. Can raise this later
         self.MAX_PARTICLES = 200
@@ -82,7 +84,7 @@ class ParticleFilter:
 
         self.weights = np.ones(self.MAX_PARTICLES) / float(self.MAX_PARTICLES)
 
-        self.particles_initialized = False
+        self.map_sub = rospy.Subscriber("/map", OccupancyGrid, self.map_initializer_callback, queue_size=1)
 
         #threading.Thread(target=thread_function, args=(index,))
 
@@ -96,6 +98,9 @@ class ParticleFilter:
         #
         # Publish a transformation frame between the map
         # and the particle_filter_frame.
+
+    def map_initializer_callback(self, msg):
+        self.map_acquired = True
 
     def initialize_particles(self, msg):
         # get clicked point from rostopic /initialpose
@@ -141,34 +146,36 @@ class ParticleFilter:
         
         # print("LIDAR CALLBACK --------------------------")
         # get the laser scan data and then feed the data into the sensor model evaluate function
-        if not self.particles_initialized:
+        if hasattr(self, 'map_acquired') and not self.map_acquired or not self.particles_initialized:
             return
-        lock.acquire()
+        #lock.acquire()
         observation = np.array(msg.ranges)
         self.weights = self.sensor_model.evaluate(self.particles, observation)
-        lock.release()
+        #lock.release()
 
     def odom_callback(self, msg):
         
         # print("odom callback")
-        if not self.particles_initialized:
+        if hasattr(self, 'map_acquired') and not self.map_acquired or not self.particles_initialized:
             return
-        lock.acquire()
+        #lock.acquire()
         x = msg.twist.twist.linear.x
         y = msg.twist.twist.linear.y
         theta = msg.twist.twist.angular.z
         odometry = [x, y, theta]
         self.proposed_particles = self.motion_model.evaluate(self.particles, odometry)
-        lock.release()
+        #lock.release()
         # motion model is updated much more often than sensor_model, so we call MCL after updated motion model
         self.MCL()
 
     def MCL(self):
         # using weights and proposed particles, update particles
         sample_idx = np.random.choice(range(self.MAX_PARTICLES), size=self.MAX_PARTICLES, p=self.weights/np.sum(self.weights))
-        self.particles = self.particles[sample_idx]
-
+        rospy.loginfo(sample_idx)
+        self.particles = self.proposed_particles[sample_idx]
+    
         self.publish_transform()
+        self.publish_particles()
 
     def publish_transform(self):
         # This is the previous code for transform
@@ -193,6 +200,7 @@ class ParticleFilter:
         angular_mean = np.arctan2(np.sum(np.sin(self.particles[:,2])), np.sum(np.cos(self.particles[:,2])))
 
         transform.header.frame_id = "map"
+        transform.header.stamp = rospy.Time.now()
         transform.pose.pose.position.x = x_mean
         transform.pose.pose.position.y = y_mean
 
@@ -203,5 +211,9 @@ class ParticleFilter:
 
 if __name__ == "__main__":
     rospy.init_node("particle_filter")
+    rate = rospy.Rate(50)
     pf = ParticleFilter()
-    rospy.spin()
+    while not rospy.is_shutdown():
+        pf.publish_particles()
+        rate.sleep()
+    
