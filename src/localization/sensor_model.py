@@ -147,18 +147,19 @@ class SensorModel:
         # You will probably want to use this function
         # to perform ray tracing from all the particles.
         # This produces a matrix of size N x num_beams_per_particle 
+        '''
         N = len(particles)
         probabilities = np.zeros(N)
-        to_px = 1.0/(self.map_resolution*self.lidar_scale_to_map_scale)
+        to_px = 1.0/float(self.map_resolution*self.lidar_scale_to_map_scale)
         scaled_observations = observation * to_px
 
-        scaled_scans = self.scan_sim.scan(particles) * np.cos(particles[:,2]) * to_px
+        scaled_scans = self.scan_sim.scan(particles) * to_px
 
         scaled_observations[scaled_observations > 200] = 200.0
         scaled_observations[scaled_observations < 0] = 0.0
         scaled_scans[scaled_scans < 0] = 0.0
         scaled_scans[scaled_scans > 200] = 200.0
-        for p in range(N): 
+        for p in range(scaled_scans): 
             current_prob = 1.0
             for n in range(self.num_beams_per_particle):
                 d = int(scaled_scans[p, n]) 
@@ -166,11 +167,22 @@ class SensorModel:
                 current_prob *= self.sensor_model_table[z,d]
             probabilities[p] = current_prob
         return probabilities
-
+        '''
         
 
         ####################################
+        
+        scans = self.scan_sim.scan(particles)
+        z = np.clip(observation/float(self.map_resolution*self.lidar_scale_to_map_scale), 0, 200)
+        d = np.clip(scans/float(self.map_resolution*self.lidar_scale_to_map_scale), 0, 200)
+        z_int = np.rint(z).astype(int)
+        d_int = np.rint(d).astype(int)
 
+        result = self.sensor_model_table[z_int, d_int]
+        result = np.prod(result, axis=1)
+        result = np.power(result, 1.0/2.2)
+        return result
+        
     def map_callback(self, map_msg):
         # Convert the map to a numpy array
         self.map = np.array(map_msg.data, np.double)/100.
