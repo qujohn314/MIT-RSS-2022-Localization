@@ -10,6 +10,7 @@ from geometry_msgs.msg import PoseWithCovarianceStamped, Transform, PoseArray
 
 import numpy as np
 import math
+import threading
 
 from scipy.spatial.transform import Rotation as R
 
@@ -75,6 +76,9 @@ class ParticleFilter:
         self.proposed_particles = np.zeros((self.MAX_PARTICLES, 3))
 
         self.weights = np.ones(self.MAX_PARTICLES) / float(self.MAX_PARTICLES)
+        
+        #threading.Thread(target=thread_function, args=(index,))
+
 
         # Implement the MCL algorithm
         # using the sensor model and the motion model
@@ -92,17 +96,19 @@ class ParticleFilter:
         print("Initialized particle!")
         self.particles[:, 0] = msg.pose.pose.position.x + np.random.normal(loc=0.0, scale=0.5, size=self.MAX_PARTICLES)
         self.particles[:, 1] = msg.pose.pose.position.y + np.random.normal(loc=0.0, scale=0.5, size=self.MAX_PARTICLES)
-        self.particles[:, 2] = self.quat_to_euler(msg.pose.pose.orientation) + np.random.normal(loc=0.0, scale=0.4,
+        self.particles[:, 2] = self.quat_to_euler(msg.pose.pose.orientation)[-1] + np.random.normal(loc=0.0, scale=0.4,
                                                                                       size=self.MAX_PARTICLES)
-        self.publish_particles()
+        self.publish_particles() 
 
     def euler_to_quat(self, euler):
         r = R.from_euler('xyz', euler)
         return r.as_quat()
 
-    def quat_to_euler(self, quat):
+    def quat_to_euler(self, orientation):
+        quat = np.array([orientation.x, orientation.y, orientation.z, orientation.w])
+        print("line 108 ", quat)
         r = R.from_quat(quat)
-        return r.as_euler(quat)
+        return r.as_euler('xyz')
 
     def particle_to_pose(self, particle):
         pose = Pose()
@@ -119,18 +125,21 @@ class ParticleFilter:
     def lidar_callback(self, msg):
         # print("LIDAR CALLBACK --------------------------")
         # get the laser scan data and then feed the data into the sensor model evaluate function
-        observation = np.array(msg.ranges)
-        self.weights = self.sensor_model.evaluate(self.particles, observation)
+        # observation = np.array(msg.ranges)
+        # self.weights = self.sensor_model.evaluate(self.particles, observation)
+        # print(self.weights)
+        pass
 
     def odom_callback(self, msg):
         # print("odom callback")
-        x = msg.twist.twist.linear.x
-        y = msg.twist.twist.linear.y
-        theta = msg.twist.twist.angular.z
-        odometry = [x, y, theta]
-        self.proposed_particles = self.motion_model.evaluate(self.particles, odometry)
-        # motion model is updated much more often than sesor_model, so we call MCL after updated motion model
-        self.MCL()
+        # x = msg.twist.twist.linear.x
+        # y = msg.twist.twist.linear.y
+        # theta = msg.twist.twist.angular.z
+        # odometry = [x, y, theta]
+        # self.proposed_particles = self.motion_model.evaluate(self.particles, odometry)
+        # # motion model is updated much more often than sesor_model, so we call MCL after updated motion model
+        # self.MCL()
+        pass
 
     def MCL(self):
         # using weights and proposed particles, update particles
