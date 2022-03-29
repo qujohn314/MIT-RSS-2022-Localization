@@ -148,7 +148,9 @@ class SensorModel:
         # You will probably want to use this function
         # to perform ray tracing from all the particles.
         # This produces a matrix of size N x num_beams_per_particle 
+        
         '''
+
         N = len(particles)
         probabilities = np.zeros(N)
         to_px = 1.0/float(self.map_resolution*self.lidar_scale_to_map_scale)
@@ -160,16 +162,16 @@ class SensorModel:
         scaled_observations[scaled_observations < 0] = 0.0
         scaled_scans[scaled_scans < 0] = 0.0
         scaled_scans[scaled_scans > 200] = 200.0
-        for p in range(scaled_scans): 
+        for p in range(N): 
             current_prob = 1.0
             for n in range(self.num_beams_per_particle):
                 d = int(scaled_scans[p][n])
                 z = int(scaled_observations[n])
                 current_prob *= self.sensor_model_table[z][d]
-            probabilities[p] = current_prob
+            probabilities[p] = current_prob ** (1.0/2.2)
         return probabilities
-        '''
         
+        '''
 
         ####################################
         
