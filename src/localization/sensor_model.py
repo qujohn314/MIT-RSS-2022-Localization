@@ -150,7 +150,7 @@ class SensorModel:
         # This produces a matrix of size N x num_beams_per_particle 
         N = len(particles)
         probabilities = np.zeros(N)
-        to_px = 1.0/(self.map_resolution*self.lidar_scale_to_map_scale*1.0)
+        to_px = 1.0/(self.map_resolution*self.lidar_scale_to_map_scale)
        
         # measured distance
         scaled_observations = observation * to_px
@@ -165,11 +165,13 @@ class SensorModel:
         for p in range(N): 
             current_prob = 1.0
             for n in range(self.num_beams_per_particle):
-                d = int(scaled_scans[p][n]) 
-                z = int(scaled_observations[n])
+                d = np.rint(scaled_scans[p][n]).astype(int)
+                z = np.rint(scaled_observations[n]).astype(int)
                 current_prob *= self.sensor_model_table[z][d]
             probabilities[p] = current_prob
-        return probabilities
+
+        #Descrease peaks in distribution 2.175
+        return np.power(probabilities,1/2.2)
 
         
 
