@@ -154,6 +154,7 @@ class ParticleFilter:
         self.MCL()
         self.publish_transform()
         self.publish_particles()
+        self.weights = np.ones(self.MAX_PARTICLES) / float(self.MAX_PARTICLES)
 
 
     def odom_callback(self, msg):
