@@ -134,6 +134,7 @@ class ParticleFilter:
     def publish_particles(self):
         p = PoseArray()
         p.header.frame_id = "map"
+        # p.poses = np.apply_along_axis(self.particle_to_pose, 1, self.proposed_particles)
         p.poses = np.apply_along_axis(self.particle_to_pose, 1, self.particles)
         #p.poses = np.vectorize(self.particle_to_pose)(self.particles)
         #p.poses = map(self.particles, self.particle_to_pose)
@@ -148,31 +149,36 @@ class ParticleFilter:
         # get the laser scan data and then feed the data into the sensor model evaluate function
         if hasattr(self, 'map_acquired') and not self.map_acquired or not self.particles_initialized:
             return
-        #lock.acquire()
+        lock.acquire()
         observation = np.array(msg.ranges)
         self.weights = self.sensor_model.evaluate(self.particles, observation)
-        #lock.release()
+        self.publish_particles()
+        lock.release()
 
     def odom_callback(self, msg):
         
         # print("odom callback")
         if hasattr(self, 'map_acquired') and not self.map_acquired or not self.particles_initialized:
             return
-        #lock.acquire()
         x = msg.twist.twist.linear.x
         y = msg.twist.twist.linear.y
         theta = msg.twist.twist.angular.z
         odometry = [x, y, theta]
-        self.proposed_particles = self.motion_model.evaluate(self.particles, odometry)
-        #lock.release()
+        # self.proposed_particles = self.motion_model.evaluate(self.particles, odometry)
+        self.particles = self.motion_model.evaluate(self.particles, odometry)
+        self.publish_particles()
+        lock.acquire()
         # motion model is updated much more often than sensor_model, so we call MCL after updated motion model
         self.MCL()
+        lock.release()
 
     def MCL(self):
         # using weights and proposed particles, update particles
         sample_idx = np.random.choice(range(self.MAX_PARTICLES), size=self.MAX_PARTICLES, p=self.weights/np.sum(self.weights))
-        rospy.loginfo(sample_idx)
-        self.particles = self.proposed_particles[sample_idx]
+        rospy.loginfo(self.weights/np.sum(self.weights))
+        # rospy.loginfo(sample_idx)
+        # self.particles = self.proposed_particles[sample_idx]
+        self.particles = self.particles[sample_idx]
     
         self.publish_transform()
         self.publish_particles()
