@@ -149,11 +149,12 @@ class ParticleFilter:
         # get the laser scan data and then feed the data into the sensor model evaluate function
         if hasattr(self, 'map_acquired') and not self.map_acquired or not self.particles_initialized:
             return
-        lock.acquire()
         observation = np.array(msg.ranges)
         self.weights = self.sensor_model.evaluate(self.particles, observation)
+        self.MCL()
+        self.publish_transform()
         self.publish_particles()
-        lock.release()
+
 
     def odom_callback(self, msg):
         
@@ -165,11 +166,10 @@ class ParticleFilter:
         theta = msg.twist.twist.angular.z
         odometry = [x, y, theta]
         # self.proposed_particles = self.motion_model.evaluate(self.particles, odometry)
+        lock.acquire()
         self.particles = self.motion_model.evaluate(self.particles, odometry)
         self.publish_particles()
-        lock.acquire()
-        # motion model is updated much more often than sensor_model, so we call MCL after updated motion model
-        self.MCL()
+        self.publish_transform()
         lock.release()
 
     def MCL(self):
@@ -178,10 +178,14 @@ class ParticleFilter:
         rospy.loginfo(self.weights/np.sum(self.weights))
         # rospy.loginfo(sample_idx)
         # self.particles = self.proposed_particles[sample_idx]
+
+        lock.acquire()
         self.particles = self.particles[sample_idx]
-    
-        self.publish_transform()
-        self.publish_particles()
+        lock.release()
+
+        # self.publish_transform()
+        # self.publish_particles()
+        
 
     def publish_transform(self):
         # This is the previous code for transform
