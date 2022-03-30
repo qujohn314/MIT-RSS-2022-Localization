@@ -6,7 +6,7 @@ from motion_model import MotionModel
 
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry, OccupancyGrid
-from geometry_msgs.msg import PoseWithCovarianceStamped, Transform, TransformStamped, PoseArray, Pose, Quaternion
+from geometry_msgs.msg import PoseWithCovariance, PoseWithCovarianceStamped, Transform, TransformStamped, PoseArray, Pose, Quaternion
 
 import numpy as np
 import math
@@ -74,7 +74,7 @@ class ParticleFilter:
         self.particle_pub = rospy.Publisher("/pf/pose/particles", PoseArray, queue_size=1)
 
 
-        self.transform_pub = rospy.Publisher(self.transform_topic, PoseWithCovarianceStamped, queue_size=1)
+        #self.transform_pub = rospy.Publisher(self.transform_topic, PoseWithCovarianceStamped, queue_size=1)
 
         # Initialize the models
         self.motion_model = MotionModel()
@@ -220,22 +220,24 @@ class ParticleFilter:
         '''
 
         return_odom = Odometry()
-        transform = PoseWithCovarianceStamped()
+        transform = PoseWithCovariance()
+
         x_mean = np.mean(self.particles[:,0])
         y_mean = np.mean(self.particles[:,1])
 
         angular_mean = np.arctan2(np.sum(np.sin(self.particles[:,2])), np.sum(np.cos(self.particles[:,2])))
 
-        transform.header.frame_id = "/map"
-        transform.header.stamp = rospy.Time.now()
-        transform.pose.pose.position.x = x_mean
-        transform.pose.pose.position.y = y_mean
+        return_odom.header.frame_id = "/map"
+        return_odom.header.stamp = rospy.Time.now()
+
+        transform.pose.position.x = x_mean
+        transform.pose.position.y = y_mean
 
         quat_array = self.euler_to_quat([0, 0, angular_mean])
-        transform.pose.pose.orientation = Quaternion(quat_array[0], quat_array[1], quat_array[2], quat_array[3])
+        transform.pose.orientation = Quaternion(quat_array[0], quat_array[1], quat_array[2], quat_array[3])
         return_odom.pose = transform
 
-        self.transform_pub.publish(transform)
+        # self.transform_pub.publish(transform)
         self.odom_pub.publish(return_odom)
 
 
