@@ -133,7 +133,7 @@ class ParticleFilter:
 
     def publish_particles(self):
         p = PoseArray()
-        p.header.frame_id = "map"
+        p.header.frame_id = "/map"
         # p.poses = np.apply_along_axis(self.particle_to_pose, 1, self.proposed_particles)
         p.poses = np.apply_along_axis(self.particle_to_pose, 1, self.particles)
         #p.poses = np.vectorize(self.particle_to_pose)(self.particles)
@@ -144,8 +144,7 @@ class ParticleFilter:
 
 
     def lidar_callback(self, msg):
-        
-        # print("LIDAR CALLBACK --------------------------")
+        print("LIDAR CALLBACK --------------------------")
         # get the laser scan data and then feed the data into the sensor model evaluate function
         if hasattr(self, 'map_acquired') and not self.map_acquired or not self.particles_initialized:
             return
@@ -162,10 +161,26 @@ class ParticleFilter:
         # print("odom callback")
         if hasattr(self, 'map_acquired') and not self.map_acquired or not self.particles_initialized:
             return
+
         x = msg.twist.twist.linear.x
         y = msg.twist.twist.linear.y
         theta = msg.twist.twist.angular.z
         odometry = [x, y, theta]
+
+        if hasattr(self, 'prev_odom_msg'):
+            self.prev_odom_arr = [x, y]
+            last_time = self.prev_odom_msg.header.stamp.secs
+            this_time = msg.header.stamp.secs
+            dt = this_time - last_time
+            if dt == 0:
+                return
+
+            odometry = odometry * dt # velocity * change in dt 
+            #print(odometry)
+        
+        self.prev_odom_msg = msg
+        self.prev_odom_arr = odometry
+        
         # self.proposed_particles = self.motion_model.evaluate(self.particles, odometry)
         lock.acquire()
         self.particles = self.motion_model.evaluate(self.particles, odometry)
@@ -185,7 +200,7 @@ class ParticleFilter:
         lock.release()
 
         # self.publish_transform()
-        # self.publish_particles()
+        #self.publish_particles()
         
 
     def publish_transform(self):
@@ -204,20 +219,24 @@ class ParticleFilter:
         self.br.sendTransform(transform)
         '''
 
+        return_odom = Odometry()
         transform = PoseWithCovarianceStamped()
         x_mean = np.mean(self.particles[:,0])
         y_mean = np.mean(self.particles[:,1])
 
         angular_mean = np.arctan2(np.sum(np.sin(self.particles[:,2])), np.sum(np.cos(self.particles[:,2])))
 
-        transform.header.frame_id = "map"
+        transform.header.frame_id = "/map"
         transform.header.stamp = rospy.Time.now()
         transform.pose.pose.position.x = x_mean
         transform.pose.pose.position.y = y_mean
 
         quat_array = self.euler_to_quat([0, 0, angular_mean])
         transform.pose.pose.orientation = Quaternion(quat_array[0], quat_array[1], quat_array[2], quat_array[3])
+        return_odom.pose = transform
+
         self.transform_pub.publish(transform)
+        self.odom_pub.publish(return_odom)
 
 
 if __name__ == "__main__":
