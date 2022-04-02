@@ -26,8 +26,8 @@ class ParticleFilter:
         self.map_acquired = False
 
         # Starting value. Can raise this later
-        self.MAX_PARTICLES = 200
-        self.transform_topic = "/base_link_pf" # for sim
+        self.MAX_PARTICLES = 217
+        self.transform_topic = "/base_link" # for sim
         # self.transform_topic = "/base_link" # for actual car
 
         ###
@@ -148,7 +148,12 @@ class ParticleFilter:
         # get the laser scan data and then feed the data into the sensor model evaluate function
         if hasattr(self, 'map_acquired') and not self.map_acquired or not self.particles_initialized:
             return
-        observation = np.array(msg.ranges)
+        observation = np.array(msg.ranges[::5])
+        # rospy.loginfo(np.size(self.particles))
+        # rospy.loginfo("particles")
+        # rospy.loginfo(self.particles.shape)
+        # rospy.loginfo("observation")
+        # rospy.loginfo(observation.shape)
         self.weights = self.sensor_model.evaluate(self.particles, observation)
         self.MCL()
         self.publish_transform()
@@ -166,7 +171,7 @@ class ParticleFilter:
         y = msg.twist.twist.linear.y
         theta = msg.twist.twist.angular.z
         odometry = [x, y, theta]
-
+        
         if hasattr(self, 'prev_odom_msg'):
             self.prev_odom_arr = [x, y]
             last_time = self.prev_odom_msg.header.stamp.secs
@@ -191,7 +196,7 @@ class ParticleFilter:
     def MCL(self):
         # using weights and proposed particles, update particles
         sample_idx = np.random.choice(range(self.MAX_PARTICLES), size=self.MAX_PARTICLES, p=self.weights/np.sum(self.weights))
-        rospy.loginfo(self.weights/np.sum(self.weights))
+        # rospy.loginfo(self.weights/np.sum(self.weights))
         # rospy.loginfo(sample_idx)
         # self.particles = self.proposed_particles[sample_idx]
 

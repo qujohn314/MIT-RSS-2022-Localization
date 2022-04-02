@@ -31,7 +31,7 @@ class SensorModel:
         self.eps = 1
 
         # Your sensor table will be a `table_width` x `table_width` np array:
-        self.table_width = 201
+        self.table_width = 218
         ####################################
 
         # Precompute the sensor model table
@@ -132,23 +132,32 @@ class SensorModel:
         # This produces a matrix of size N x num_beams_per_particle 
         
 
-        N = len(particles)
         # probabilities = np.zeros(N)
         to_px = 1.0/(self.map_resolution*self.lidar_scale_to_map_scale)
        
         # measured distance
         scaled_observations = observation * to_px
 
+        # rospy.loginfo(particles.shape)
+        # print("pixels")
+        # rospy.loginfo(to_px)
         scaled_scans = self.scan_sim.scan(particles) * to_px
+        # print("scaled scans")
+        # rospy.loginfo(scaled_scans.shape)
 
-        scaled_observations[scaled_observations > 200] = 200.0
+
+        scaled_observations[scaled_observations > 217] = 217.0
         scaled_observations[scaled_observations < 0] = 0.0
         scaled_scans[scaled_scans < 0] = 0.0
-        scaled_scans[scaled_scans > 200] = 200.0
+        scaled_scans[scaled_scans > 217] = 217.0
 
         ds = np.rint(scaled_scans).astype(int)
         zs = np.rint(scaled_observations).astype(int)
-
+        zs = np.expand_dims(zs, 1)
+        # rospy.loginfo("Z")
+        # rospy.loginfo(zs)
+        # rospy.loginfo("D")
+        # rospy.loginfo(ds)
         probabilities = np.prod(self.sensor_model_table[zs, ds], axis=1)
 
         #Descrease peaks in distribution 2.175
