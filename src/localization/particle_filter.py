@@ -28,7 +28,7 @@ class ParticleFilter:
         self.map_acquired = False
 
         # Starting value. Can raise this later
-        self.MAX_PARTICLES = 217
+        self.MAX_PARTICLES = int(rospy.get_param("~num_particles"))
         self.transform_topic = "/base_link" # for sim
         # self.transform_topic = "/base_link" # for actual car
 
@@ -248,12 +248,15 @@ class ParticleFilter:
         # self.transform_pub.publish(transform)
         self.odom_pub.publish(return_odom)
 
-        map_laser_pos = np.array( (x_mean, y_mean, 0))
-        map_laser_rotation = np.array(tf.transformations.quaternion_from_euler(0, 0, angular_mean))
-        laser_base_link_offset = (0.265, 0, 0)
-        map_laser_pos -= np.dot(tf.transformations.quaternion_matrix(tf.transformations.unit_vector(map_laser_rotation))[:3, :3], laser_base_link_offset).T    
+        self.pub_tf.sendTransform((x_mean,y_mean,0),tf.transformations.quaternion_from_euler(0, 0, -angular_mean), 
+            time , "/laser", "/map")
 
-        self.pub_tf.sendTransform(map_laser_pos, map_laser_rotation, time, self.particle_filter_frame, "/map")
+        # map_laser_pos = np.array( (x_mean, y_mean, 0))
+        # map_laser_rotation = np.array(tf.transformations.quaternion_from_euler(0, 0, angular_mean))
+        # laser_base_link_offset = (0.265, 0, 0)
+        # map_laser_pos -= np.dot(tf.transformations.quaternion_matrix(tf.transformations.unit_vector(map_laser_rotation))[:3, :3], laser_base_link_offset).T    
+
+        # self.pub_tf.sendTransform(map_laser_pos, map_laser_rotation, time, self.particle_filter_frame, "/map")
 
 if __name__ == "__main__":
     rospy.init_node("particle_filter")

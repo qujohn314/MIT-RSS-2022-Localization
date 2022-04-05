@@ -18,7 +18,7 @@ class SensorModel:
         self.scan_theta_discretization = rospy.get_param("~scan_theta_discretization")
         self.scan_field_of_view = rospy.get_param("~scan_field_of_view")
         self.lidar_scale_to_map_scale = rospy.get_param("~lidar_scale_to_map_scale", 1)
-
+        self.num_particles = int(rospy.get_param("~num_particles"))
 
         ####################################
         # TODO: Tune these parameters
@@ -31,8 +31,8 @@ class SensorModel:
         self.eps = 1
 
         # Your sensor table will be a `table_width` x `table_width` np array:
-        # self.table_width = 218
-        self.table_width = 201
+        self.table_width = self.num_particles
+        # self.table_width = 201
         ####################################
 
         # Precompute the sensor model table
