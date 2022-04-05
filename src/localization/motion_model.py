@@ -38,15 +38,21 @@ class MotionModel:
         ####################################
         # convert 
         
+        # new_odometry_x = odometry[0] + np.random.normal(loc=0.0, scale=0.2, size=particles.shape[0])
+        # new_odometry_y = odometry[1] + np.random.normal(loc=0.0, scale=0.2, size=particles.shape[0])
+        # new_odometry_theta = odometry[2] + np.random.normal(loc=0.0, scale=0.15, size=particles.shape[0])
+
         new_odometry_x = odometry[0] + np.random.normal(loc=0.0, scale=0.05, size=particles.shape[0])
         new_odometry_y = odometry[1] + np.random.normal(loc=0.0, scale=0.05, size=particles.shape[0])
         new_odometry_theta = odometry[2] + np.random.normal(loc=0.0, scale=0.05, size=particles.shape[0])
+
+
 
         if self.deterministic:
             new_odometry_x = odometry[0]
             new_odometry_y = odometry[1]
             new_odometry_theta = odometry[2]
-            
+
         cosines = np.cos(particles[:, 2])
         sines = np.sin(particles[:, 2])
 

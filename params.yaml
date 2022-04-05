@@ -1,5 +1,5 @@
 # A reasonable number to start with
-num_particles: 200
+num_particles: 217
 
 # The number of lidar beams emitted from
 # each particle. This doesn't need to be
@@ -16,10 +16,11 @@ scan_theta_discretization: 500
 # The names of topics to listen and publish to
 map_topic: "/map"
 scan_topic: "/scan"
-odom_topic: "/odom"
+# odom_topic: "/odom"
+odom_topic: "/vesc/odom"
 
 # The frame you should publish your transform to
-particle_filter_frame: "/base_link_pf"
+particle_filter_frame: "/base_link"
 
 # Deterministic flag; set to true to remove all added noise
 deterministic: false

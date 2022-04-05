@@ -31,7 +31,8 @@ class SensorModel:
         self.eps = 1
 
         # Your sensor table will be a `table_width` x `table_width` np array:
-        self.table_width = 218
+        # self.table_width = 218
+        self.table_width = 201
         ####################################
 
         # Precompute the sensor model table
@@ -146,10 +147,10 @@ class SensorModel:
         # rospy.loginfo(scaled_scans.shape)
 
 
-        scaled_observations[scaled_observations > 217] = 217.0
+        scaled_observations[scaled_observations > self.table_width-1] = float(self.table_width-1)
         scaled_observations[scaled_observations < 0] = 0.0
         scaled_scans[scaled_scans < 0] = 0.0
-        scaled_scans[scaled_scans > 217] = 217.0
+        scaled_scans[scaled_scans > self.table_width-1] = float(self.table_width-1)
 
         ds = np.rint(scaled_scans).astype(int)
         zs = np.rint(scaled_observations).astype(int)
@@ -161,7 +162,8 @@ class SensorModel:
         probabilities = np.prod(self.sensor_model_table[zs, ds], axis=1)
 
         #Descrease peaks in distribution 2.175
-        return np.power(probabilities,1/2.2)
+        #return np.power(probabilities,1/2.2)
+        return np.power(probabilities,1/4.5)
         
     def map_callback(self, map_msg):
         # Convert the map to a numpy array
